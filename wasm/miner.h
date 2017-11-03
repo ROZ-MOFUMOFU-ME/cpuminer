@@ -1,14 +1,10 @@
 #ifndef __MINER_H__
 #define __MINER_H__
 
-#include "cpuminer-config.h"
-
 #include <stdbool.h>
 #include <inttypes.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include <jansson.h>
-#include <curl/curl.h>
 
 #ifdef STDC_HEADERS
 # include <stdlib.h>
@@ -82,54 +78,6 @@ static inline uint32_t swab32(uint32_t v)
 #include <sys/endian.h>
 #endif
 
-#if !HAVE_DECL_BE32DEC
-static inline uint32_t be32dec(const void *pp)
-{
-	const uint8_t *p = (uint8_t const *)pp;
-	return ((uint32_t)(p[3]) + ((uint32_t)(p[2]) << 8) +
-	    ((uint32_t)(p[1]) << 16) + ((uint32_t)(p[0]) << 24));
-}
-#endif
-
-#if !HAVE_DECL_LE32DEC
-static inline uint32_t le32dec(const void *pp)
-{
-	const uint8_t *p = (uint8_t const *)pp;
-	return ((uint32_t)(p[0]) + ((uint32_t)(p[1]) << 8) +
-	    ((uint32_t)(p[2]) << 16) + ((uint32_t)(p[3]) << 24));
-}
-#endif
-
-#if !HAVE_DECL_BE32ENC
-static inline void be32enc(void *pp, uint32_t x)
-{
-	uint8_t *p = (uint8_t *)pp;
-	p[3] = x & 0xff;
-	p[2] = (x >> 8) & 0xff;
-	p[1] = (x >> 16) & 0xff;
-	p[0] = (x >> 24) & 0xff;
-}
-#endif
-
-#if !HAVE_DECL_LE32ENC
-static inline void le32enc(void *pp, uint32_t x)
-{
-	uint8_t *p = (uint8_t *)pp;
-	p[0] = x & 0xff;
-	p[1] = (x >> 8) & 0xff;
-	p[2] = (x >> 16) & 0xff;
-	p[3] = (x >> 24) & 0xff;
-}
-#endif
-
-#if JANSSON_MAJOR_VERSION >= 2
-#define JSON_LOADS(str, err_ptr) json_loads(str, 0, err_ptr)
-#define JSON_LOAD_FILE(path, err_ptr) json_load_file(path, 0, err_ptr)
-#else
-#define JSON_LOADS(str, err_ptr) json_loads(str, err_ptr)
-#define JSON_LOAD_FILE(path, err_ptr) json_load_file(path, err_ptr)
-#endif
-
 #define USER_AGENT PACKAGE_NAME "/" PACKAGE_VERSION
 
 void sha256_init(uint32_t *state);
@@ -197,8 +145,6 @@ extern struct work_restart *work_restart;
 #define JSON_RPC_QUIET_404	(1 << 1)
 
 extern void applog(int prio, const char *fmt, ...);
-extern json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass,
-	const char *rpc_req, int *curl_err, int flags);
 extern void bin2hex(char *s, const unsigned char *p, size_t len);
 extern char *abin2hex(const unsigned char *p, size_t len);
 extern bool hex2bin(unsigned char *p, const char *hexstr, size_t len);
@@ -225,12 +171,6 @@ struct stratum_job {
 };
 
 struct stratum_ctx {
-	char *url;
-
-	CURL *curl;
-	char *curl_url;
-	char curl_err_str[CURL_ERROR_SIZE];
-	curl_socket_t sock;
 	size_t sockbuf_size;
 	char *sockbuf;
 	pthread_mutex_t sock_lock;

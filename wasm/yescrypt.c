@@ -1,5 +1,6 @@
 /*-
  * Copyright 2014 Alexander Peslyak
+ * Copyright 2017 ohac
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -19,7 +20,11 @@
  */
 #include "yescrypt.h"
 #include "sha256.c"
-#include "yescrypt-best.c"
+#include "yescrypt-opt.c"
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include "miner.h"
 
 #define YESCRYPT_N 2048
 #define YESCRYPT_R 8
@@ -27,17 +32,15 @@
 #define YESCRYPT_T 0
 #define YESCRYPT_FLAGS (YESCRYPT_RW | YESCRYPT_PWXFORM)
 
-static int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
-                            const uint8_t *salt, size_t saltlen,
-                            uint8_t *buf, size_t buflen)
+int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
+                     const uint8_t *salt, size_t saltlen,
+                     uint8_t *buf, size_t buflen)
 {
     static __thread int initialized = 0;
     static __thread yescrypt_shared_t shared;
     static __thread yescrypt_local_t local;
     int retval;
     if (!initialized) {
-        /* "shared" could in fact be shared, but it's simpler to keep it private
-         * along with "local".  It's dummy and tiny anyway. */
         if (yescrypt_init_shared(&shared, NULL, 0,
                                  0, 0, 0, YESCRYPT_SHARED_DEFAULTS, 0, NULL, 0))
             return -1;
@@ -50,15 +53,6 @@ static int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
     retval = yescrypt_kdf(&shared, &local, passwd, passwdlen, salt, saltlen,
                           YESCRYPT_N, YESCRYPT_R, YESCRYPT_P, YESCRYPT_T,
                           YESCRYPT_FLAGS, buf, buflen);
-#if 0
-    if (yescrypt_free_local(&local)) {
-        yescrypt_free_shared(&shared);
-        return -1;
-    }
-    if (yescrypt_free_shared(&shared))
-        return -1;
-    initialized = 0;
-#endif
     if (retval < 0) {
         yescrypt_free_local(&local);
         yescrypt_free_shared(&shared);
@@ -66,50 +60,40 @@ static int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
     return retval;
 }
 
-static void yescrypt_hash(const char *input, char *output)
-{
-    yescrypt_bitzeny((const uint8_t *) input, 80,
-                     (const uint8_t *) input, 80,
-                     (uint8_t *) output, 32);
-}
-
-#include <stdbool.h>
-struct work_restart {
-	volatile unsigned long	restart;
-	char			padding[128 - sizeof(unsigned long)];
-};
-
-extern struct work_restart *work_restart;
-extern bool fulltest(const uint32_t *hash, const uint32_t *target);
-
-static int pretest(const uint32_t *hash, const uint32_t *target)
+static inline int pretest(const uint32_t *hash, const uint32_t *target)
 {
 	return hash[7] < target[7];
 }
 
-int scanhash_yescrypt(int thr_id, uint32_t *pdata, const uint32_t *ptarget,
-		      uint32_t max_nonce, unsigned long *hashes_done)
+const char* sha256d_str(
+		const char *coinb1str,
+		const char *xnonce1str,
+		const char *xnonce2str,
+		const char *coinb2str,
+		const char *merklestr)
 {
-	uint32_t data[20] __attribute__((aligned(128)));
-	uint32_t hash[8] __attribute__((aligned(32)));
-	uint32_t n = pdata[19] - 1;
-	const uint32_t first_nonce = pdata[19];
+	unsigned char merkle_root[64];
+	unsigned char buff[256];
+	static char rv[64 + 1];
+	size_t coinb1_size = strlen(coinb1str) / 2;
+	size_t xnonce1_size = strlen(xnonce1str) / 2;
+	size_t xnonce2_size = strlen(xnonce2str) / 2;
+	size_t coinb2_size = strlen(coinb2str) / 2;
+	size_t coinbase_size = coinb1_size + xnonce1_size + xnonce2_size + coinb2_size;
+	int merkle_count = strlen(merklestr) / (32 * 2);
+	int i;
+	unsigned char coinbase[256];
 
-	for (int i = 0; i < 20; i++) {
-		be32enc(&data[i], pdata[i]);
+	hex2bin(coinbase, coinb1str, coinb1_size);
+	hex2bin(coinbase + coinb1_size, xnonce1str, xnonce1_size);
+	hex2bin(coinbase + coinb1_size + xnonce1_size, xnonce2str, xnonce2_size);
+	hex2bin(coinbase + coinb1_size + xnonce1_size + xnonce2_size, coinb2str, coinb2_size);
+	sha256d(merkle_root, coinbase, coinbase_size);
+
+	for (i = 0; i < merkle_count; i++) {
+		hex2bin(merkle_root + 32, merklestr + i * 32 * 2, 32);
+		sha256d(merkle_root, merkle_root, 64);
 	}
-	do {
-		be32enc(&data[19], ++n);
-		yescrypt_hash((char *)data, (char *)hash);
-		if (pretest(hash, ptarget) && fulltest(hash, ptarget)) {
-			pdata[19] = n;
-			*hashes_done = n - first_nonce + 1;
-			return 1;
-		}
-	} while (n < max_nonce && !work_restart[thr_id].restart);
-	
-	*hashes_done = n - first_nonce + 1;
-	pdata[19] = n;
-	return 0;
+	bin2hex(rv, merkle_root, 32);
+	return rv;
 }
-
