@@ -9,7 +9,6 @@
  * any later version.  See COPYING for more details.
  */
 
-#include "cpuminer-config.h"
 #define _GNU_SOURCE
 
 #include <stdio.h>
@@ -30,8 +29,17 @@
 #include <sys/sysctl.h>
 #endif
 #endif
-#include "compat.h"
 #include "miner.h"
+#include "sysendian.h"
+
+extern int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
+		const uint8_t *salt, size_t saltlen,
+		uint8_t *buf, size_t buflen);
+
+static inline int pretest(const uint32_t *hash, const uint32_t *target)
+{
+	return hash[7] < target[7];
+}
 
 const char* miner_thread(const char* blockheader, const char* targetstr,
 		uint32_t first_nonce)

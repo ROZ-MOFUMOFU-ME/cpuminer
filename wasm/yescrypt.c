@@ -60,11 +60,6 @@ int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
     return retval;
 }
 
-static inline int pretest(const uint32_t *hash, const uint32_t *target)
-{
-	return hash[7] < target[7];
-}
-
 const char* sha256d_str(
 		const char *coinb1str,
 		const char *xnonce1str,
