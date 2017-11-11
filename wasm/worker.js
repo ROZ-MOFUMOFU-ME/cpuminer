@@ -56,18 +56,30 @@ var miner = function(work){
     var nonce_and_hash = miner_thread2(blockheader, work.diff.toString(),
         work.nonce);
     console.log('worker: found? ' + nonce_and_hash);
-    postMessage([xnonce2, nonce_and_hash.split(',')[0]]);
+    var nah = nonce_and_hash.split(',');
+    postMessage([xnonce2, nah[0], nah[1]]);
   }
 };
 
 self.addEventListener('message', (message) => {
-  var data = message.data;
-  console.log(data);
-  if (data == 'stop') {
-    console.log('worker: stop');
-    self.close();
-  }
-  if (data.jobid) {
-    miner(data);
-  }
+  var f = function(msg){
+    var data = msg.data;
+    console.log(data);
+    if (data == 'stop') {
+      console.log('worker: stop');
+      self.close();
+    }
+    if (data.jobid) {
+      miner(data);
+    }
+  };
+  var f2 = function(msg){
+    if (Module.ready) {
+      f(msg);
+    }
+    else {
+      setTimeout(function(){ f2(msg); }, 10);
+    }
+  };
+  f2(message);
 });
