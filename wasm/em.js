@@ -13,10 +13,12 @@ var Module = {
     }
     console.error(text);
   },
+  ready: false,
   monitorRunDependencies: function(left) {
     console.log('left: ' + left);
     if (left == 0) {
       console.log('complete');
+      this.ready = true;
     }
   }
 };
