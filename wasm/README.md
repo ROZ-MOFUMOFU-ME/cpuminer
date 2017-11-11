@@ -1,5 +1,5 @@
 # wasm
 ```
 ./build.sh
-cp wasmminer.wasm worker_all.js ../../wasmminer/js
+cp em.js wasmminer.js wasmminer.wasm worker.js ../../wasmminer/js
 ```

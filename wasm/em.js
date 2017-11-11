@@ -13,4 +13,11 @@ var Module = {
     }
     console.error(text);
   },
+  monitorRunDependencies: function(left) {
+    console.log('left: ' + left);
+    if (left == 0) {
+      console.log('complete');
+    }
+  }
 };
+importScripts('wasmminer.js', 'worker.js');
