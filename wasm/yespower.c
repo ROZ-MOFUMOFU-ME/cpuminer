@@ -1,6 +1,5 @@
 /*-
- * Copyright 2014 Alexander Peslyak
- * Copyright 2017 ohac
+ * Copyright 2013-2018 Alexander Peslyak
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -18,47 +17,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include "yescrypt.h"
-#include "sha256.c"
-#include "yescrypt-opt.c"
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
+
 #include "miner.h"
+#include "sysendian.h"
 
-#define YESCRYPT_N 2048
-#define YESCRYPT_R 8
-#define YESCRYPT_P 1
-#define YESCRYPT_T 0
-#define YESCRYPT_FLAGS (YESCRYPT_RW | YESCRYPT_PWXFORM)
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
 
-int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
-                     const uint8_t *salt, size_t saltlen,
-                     uint8_t *buf, size_t buflen)
-{
-    static __thread int initialized = 0;
-    static __thread yescrypt_shared_t shared;
-    static __thread yescrypt_local_t local;
-    int retval;
-    if (!initialized) {
-        if (yescrypt_init_shared(&shared, NULL, 0,
-                                 0, 0, 0, YESCRYPT_SHARED_DEFAULTS, 0, NULL, 0))
-            return -1;
-        if (yescrypt_init_local(&local)) {
-            yescrypt_free_shared(&shared);
-            return -1;
-        }
-        initialized = 1;
-    }
-    retval = yescrypt_kdf(&shared, &local, passwd, passwdlen, salt, saltlen,
-                          YESCRYPT_N, YESCRYPT_R, YESCRYPT_P, YESCRYPT_T,
-                          YESCRYPT_FLAGS, buf, buflen);
-    if (retval < 0) {
-        yescrypt_free_local(&local);
-        yescrypt_free_shared(&shared);
-    }
-    return retval;
-}
+#include "yespower.h"
 
 const char* sha256d_str(
 		const char *coinb1str,

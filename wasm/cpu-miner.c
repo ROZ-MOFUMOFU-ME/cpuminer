@@ -31,10 +31,7 @@
 #endif
 #include "miner.h"
 #include "sysendian.h"
-
-extern int yescrypt_bitzeny(const uint8_t *passwd, size_t passwdlen,
-		const uint8_t *salt, size_t saltlen,
-		uint8_t *buf, size_t buflen);
+#include "yespower.h"
 
 static inline int pretest(const uint32_t *hash, const uint32_t *target)
 {
@@ -44,7 +41,7 @@ static inline int pretest(const uint32_t *hash, const uint32_t *target)
 const char* miner_thread(const char* blockheader, const char* targetstr,
 		uint32_t first_nonce)
 {
-	char pdata[80];
+	char pdata[112];
 	uint32_t target[8];
 	static char rv[8 + 1 + 64 + 1 + 64 + 1];
 	uint32_t max_nonce = 0xffffffffU;
@@ -53,8 +50,22 @@ const char* miner_thread(const char* blockheader, const char* targetstr,
 	uint32_t n = 0;
 	uint32_t n2 = 0;
 	double diff;
+	uint32_t headerlen = 80;
 
-	hex2bin((void*)pdata, blockheader, 80);
+	uint32_t version = be32dec(&blockheader[0]); // version
+	if (version >= 5) {
+	    headerlen = 112;
+	}	    
+
+	yespower_params_t params = {
+		.version = YESPOWER_0_5,
+		.N = 2048,
+		.r = 8,
+		.pers = (const uint8_t *)data,
+		.perslen = headerlen
+	};
+
+	hex2bin((void*)pdata, blockheader, headerlen);
 	diff = atof(targetstr);
 	diff_to_target(target, diff / 65536.0);
 
@@ -70,11 +81,13 @@ const char* miner_thread(const char* blockheader, const char* targetstr,
 	for (int i = 17; i < 20; i++) {
 		data[i] = be32dec(&pdata[i*4]);
 	}
+	for (int i = 0; i < 8; i++) { // sapling root
+		data[20 + i] = le32dec(&pdata[(i+20)*4]);
+	}
 	do {
 		be32enc(&data[19], ++n);
-		yescrypt_bitzeny((const uint8_t *) data, 80,
-				(const uint8_t *) data, 80,
-				(uint8_t *) hash, 32);
+		yespower_tls((const uint8_t *) data, headerlen, &params,
+			     (yespower_binary_t *) hash);
 		if (pretest(hash, target) && fulltest(hash, target)) {
 			n2 = n;
 			bin2hex(rv, (void*)&n2, 4);
