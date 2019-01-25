@@ -50,7 +50,7 @@ var miner = function(work){
       merkleroot +
       work.ntime +
       work.nbits;
-    var blockheader = blockheader0 + nonce;
+    var blockheader = blockheader0 + nonce + sapling;
 
     console.log('worker: blockheader = ' + blockheader);
     var nonce_and_hash = miner_thread2(blockheader, work.diff.toString(),

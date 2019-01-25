@@ -45,17 +45,14 @@ const char* miner_thread(const char* blockheader, const char* targetstr,
 	uint32_t target[8];
 	static char rv[8 + 1 + 64 + 1 + 64 + 1];
 	uint32_t max_nonce = 0xffffffffU;
-	uint32_t data[20] __attribute__((aligned(128)));
+	uint32_t data[28] __attribute__((aligned(128)));
 	uint32_t hash[8] __attribute__((aligned(32)));
 	uint32_t n = 0;
 	uint32_t n2 = 0;
 	double diff;
-	uint32_t headerlen = 80;
+	uint32_t headerlen = 112;
 
-	uint32_t version = be32dec(&blockheader[0]); // version
-	if (version >= 5) {
-	    headerlen = 112;
-	}	    
+	//uint32_t version = be32dec(&blockheader[0]); // version
 
 	yespower_params_t params = {
 		.version = YESPOWER_0_5,
@@ -82,7 +79,7 @@ const char* miner_thread(const char* blockheader, const char* targetstr,
 		data[i] = be32dec(&pdata[i*4]);
 	}
 	for (int i = 0; i < 8; i++) { // sapling root
-		data[20 + i] = le32dec(&pdata[(i+20)*4]);
+		data[20 + i] = be32dec(&pdata[(i+20)*4]);
 	}
 	do {
 		be32enc(&data[19], ++n);
