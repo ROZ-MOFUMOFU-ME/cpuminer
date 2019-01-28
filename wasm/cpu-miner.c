@@ -58,8 +58,8 @@ const char* miner_thread(const char* blockheader, const char* targetstr,
 		.version = YESPOWER_0_5,
 		.N = 2048,
 		.r = 8,
-		.pers = (const uint8_t *)data,
-		.perslen = headerlen
+		.pers = "Client Key",
+		.perslen = 10
 	};
 
 	hex2bin((void*)pdata, blockheader, headerlen);
