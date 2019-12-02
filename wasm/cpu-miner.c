@@ -55,11 +55,11 @@ const char* miner_thread(const char* blockheader, const char* targetstr,
 	//uint32_t version = be32dec(&blockheader[0]); // version
 
 	yespower_params_t params = {
-		.version = YESPOWER_0_5,
+		.version = YESPOWER_1_0,
 		.N = 2048,
-		.r = 8,
-		.pers = "Client Key",
-		.perslen = 10
+		.r = 32,
+		.pers = "Satoshi Nakamoto 31/Oct/2008 Proof-of-work is essentially one-CPU-one-vote",
+		.perslen = 74
 	};
 
 	hex2bin((void*)pdata, blockheader, headerlen);
